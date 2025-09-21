@@ -2,16 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { Send, ChefHat, User, Bot } from "lucide-react";
 
 export default function App() {
+
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId, setSessionId] = useState("");
   const messagesEndRef = useRef(null);
-
-  // Generate a session ID when component mounts
-  useEffect(() => {
-    setSessionId(Date.now().toString() + Math.random().toString(36).substr(2, 9));
-  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -30,48 +25,39 @@ export default function App() {
     setIsLoading(true);
     
     try {
-      // Use the n8n chat trigger endpoint
-      const res = await fetch("http://localhost:5678/webhook/f5e289b6-4914-4c86-ade9-b5a99970a807/chat", {
+      const res = await fetch("http://localhost:5678/webhook/chatbot", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          chatInput: userMessage,
-          sessionId: sessionId
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage }),
       });
       
       const data = await res.json();
       console.log("Response from n8n:", data);
-            
-      // Handle different response formats from n8n chat trigger
-	  let botResponse = "";
-	  console.log(data)
+      
+      let botResponse = "";
       if (data.success) {
         if (data.type === "recipe_suggestions" && data.recipes) {
           botResponse = "Here are some recipe suggestions:\n\n" + 
             data.recipes.map((recipe, index) => {
-              // Split ingredients string into array if it's a string
               let ingredients = recipe.ingredients;
               if (typeof ingredients === 'string') {
                 ingredients = ingredients.split(',').map(ing => ing.trim());
               }
               
-              return `${index + 1}. ${recipe.name}\nIngredients:\n${
-                ingredients.map(ing => `- ${ing}`).join('\n')
+              return `**${recipe.name}**\n${
+                ingredients.map(ing => `• ${ing}`).join('\n')
               }`;
             }).join('\n\n');
             
         } else if (data.type === "ingredient_substitutes" && data.substitutes) {
           botResponse = `Here are some substitutes for your ingredient:\n\n${
-            data.substitutes.map((sub, index) => `${index + 1}. ${sub}`).join('\n')
+            data.substitutes.map((sub, index) => `• ${sub}`).join('\n')
           }`;
         } else {
-          botResponse = JSON.stringify(data, null, 2);
+          botResponse = data.message || JSON.stringify(data, null, 2);
         }
       } else {
-        botResponse = data.output || "Sorry, I couldn't process your request.";
+        botResponse = data.message || "Sorry, I couldn't process your request.";
       }
       
       setMessages(m => [...m, { role: "bot", text: botResponse }]);
@@ -215,11 +201,11 @@ export default function App() {
               disabled={!input.trim() || isLoading}
               className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-6 py-3 rounded-xl hover:from-orange-600 hover:to-amber-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              <Send className="w-4 h-4" />
+              <span className="text-sm">➤</span>
             </button>
           </div>
         </div>
       </div>
     </div>
   );
-};
+}
