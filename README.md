@@ -1,70 +1,253 @@
-# Getting Started with Create React App
+    # Recipe Chatbot Assistant
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+    A smart culinary assistant that helps you find recipe suggestions and ingredient substitutes using AI. This application combines a FastAPI backend with a React frontend and integrates with n8n workflows for intelligent recipe recommendations.
 
-## Available Scripts
+    ## Features
 
-In the project directory, you can run:
+    - **Recipe Suggestions**: Get personalized recipe recommendations based on available ingredients
+    - **Ingredient Substitution**: Find suitable substitutes for ingredients you don't have
+    - **Context-Aware Recommendations**: Suggestions based on taste, texture, color, and cooking methods
+    - **Conversational Interface**: Chat-based UI for natural interactions
+    - **Hybrid Intelligence**: Combines local dataset with OpenAI GPT for comprehensive suggestions
 
-### `npm start`
+    ## System Architecture
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+    The application consists of three main components:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+    1. **Frontend (React)**: Interactive chat interface (`src/App.js`)
+    2. **Backend (FastAPI)**: API server with ingredient and recipe services (`backend_api.py`)
+    3. **n8n Workflow**: Orchestrates the chatbot logic and connects frontend to backend
 
-### `npm test`
+    ## Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+    Before running the application, ensure you have:
 
-### `npm run build`
+    - **Python 3.8+** installed
+    - **Node.js 14+** and npm installed
+    - **n8n** installed and running
+    - **OpenAI API Key** (for GPT-powered suggestions)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+    ## Installation
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+    ### 1. Backend Setup
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+    ```bash
+    # Navigate to the backend directory
+    cd backend
 
-### `npm run eject`
+    # Create a virtual environment
+    python -m venv venv
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+    # Activate the virtual environment
+    # On Windows:
+    venv\Scripts\activate
+    # On macOS/Linux:
+    source venv/bin/activate
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+    # Install required Python packages
+    pip install fastapi uvicorn pydantic openai python-dotenv
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+    # Create a .env file and add your OpenAI API key
+    echo "OPENAI_API_KEY=your_api_key_here" > .env
+    ```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+    ### 2. Frontend Setup
 
-## Learn More
+    ```bash
+    # Navigate to the frontend directory
+    cd frontend
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+    # Install dependencies
+    npm install
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+    # Install required packages
+    npm install lucide-react
+    ```
 
-### Code Splitting
+    ### 3. n8n Setup
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+    ```bash
+    # Install n8n globally (if not already installed)
+    npm install -g n8n
 
-### Analyzing the Bundle Size
+    # Start n8n
+    n8n start
+    ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+    Then import the n8n workflow and configure the webhook URL in your workflow.
 
-### Making a Progressive Web App
+    ## Configuration
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+    ### Environment Variables
 
-### Advanced Configuration
+    Create a `.env` file in the backend directory with:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+    ```env
+    OPENAI_API_KEY=your_openai_api_key_here
+    ```
 
-### Deployment
+    ### n8n Webhook Configuration
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+    Update the webhook URL in `src/App.js` (line 31) to match your n8n chat trigger endpoint:
 
-### `npm run build` fails to minify
+    ```javascript
+    const res = await fetch("http://localhost:5678/webhook/YOUR_WEBHOOK_ID/chat", {
+    ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+    ## Running the Application
+
+    ### Start the Backend Server
+
+    ```bash
+    # From the backend directory with virtual environment activated
+    uvicorn backend_api:app --reload --host 0.0.0.0 --port 8000
+    ```
+
+    The API will be available at: `http://localhost:8000`
+
+    ### Start the Frontend
+
+    ```bash
+    # From the frontend directory
+    npm start
+    ```
+
+    The React app will open at: `http://localhost:3000`
+
+    ### Ensure n8n is Running
+
+    ```bash
+    n8n start
+    ```
+
+    n8n will be available at: `http://localhost:5678`
+
+    ## Usage
+
+    1. Open the chat interface at `http://localhost:3000`
+    2. Type your query in natural language:
+    - **For recipes**: "Suggest recipes with chicken and rice"
+    - **For substitutes**: "What can I use instead of butter in cookies?"
+    - **For context-based suggestions**: "I need something crunchy and green"
+
+    3. The chatbot will process your request and provide relevant suggestions
+
+    ## API Endpoints
+
+    ### POST `/substitute`
+    Get ingredient substitutes for a specific recipe.
+
+    **Request Body:**
+    ```json
+    {
+    "ingredient": "butter",
+    "recipe": "chocolate chip cookies"
+    }
+    ```
+
+    **Response:**
+    ```json
+    {
+    "substitutes": ["coconut oil", "margarine", "vegetable oil"],
+    "source": "gpt"
+    }
+    ```
+
+    ### POST `/suggest`
+    Get recipe suggestions based on available ingredients.
+
+    **Request Body:**
+    ```json
+    {
+    "ingredients": ["chicken", "rice", "garlic"]
+    }
+    ```
+
+    **Response:**
+    ```json
+    {
+    "recipes": [
+        {
+        "name": "Garlic Chicken Rice",
+        "ingredients": "chicken, rice, garlic, soy sauce, ginger"
+        }
+    ]
+    }
+    ```
+
+    ## Project Structure
+
+    ```
+    recipe-chatbot/
+    ├── backend/
+    │   ├── backend_api.py           # FastAPI application
+    │   ├── config.py                # Configuration settings
+    │   ├── models.py                # Data models
+    │   ├── services/
+    │   │   ├── ingredient_service.py    # Ingredient operations
+    │   │   ├── recipe_service.py        # Recipe operations
+    │   │   ├── openai_service.py        # OpenAI API integration
+    │   │   └── dataset_service.py       # Local dataset handling
+    │   └── .env                     # Environment variables
+    ├── frontend/
+    │   └── src/
+    │       └── App.js               # React chat interface
+    └── README.md                    # This file
+    ```
+
+    ## Troubleshooting
+
+    ### Backend Issues
+
+    - **OpenAI API errors**: Verify your API key in the `.env` file
+    - **Port already in use**: Change the port using `--port` flag
+    - **Import errors**: Ensure all dependencies are installed in the virtual environment
+
+    ### Frontend Issues
+
+    - **Cannot connect to backend**: Verify the backend is running on port 8000
+    - **n8n webhook errors**: Check the webhook URL matches your n8n configuration
+    - **Session ID issues**: Clear browser cache and reload
+
+    ### n8n Issues
+
+    - **Workflow not triggering**: Ensure the webhook is active and the URL is correct
+    - **Connection timeout**: Check if all services are running on the correct ports
+
+    ## Features in Detail
+
+    ### Ingredient Substitution
+    The system uses a hybrid approach:
+    1. First attempts to get substitutes from OpenAI GPT
+    2. Falls back to context-based suggestions using dataset
+    3. Returns the most suitable alternatives with source attribution
+
+    ### Recipe Suggestions
+    Provides multiple modes:
+    - Suggestions based on available ingredients
+    - Similar recipes to a given recipe
+    - Recipes that must include specific ingredients
+    - Context-aware recommendations
+
+    ### Natural Language Processing
+    The chatbot understands various phrasings:
+    - "What can I use instead of X?"
+    - "Give me recipes with Y and Z"
+    - "I need something with [texture/taste/color]"
+
+    ## Contributing
+
+    To extend the functionality:
+
+    1. Add new API endpoints in `backend_api.py`
+    2. Implement service methods in the appropriate service files
+    3. Update the frontend to handle new response types
+    4. Modify n8n workflow to route new request types
+
+    ## License
+
+    This project is provided as-is for educational and personal use.
+
+    ---
+
+    **Note**: This application requires active internet connection for OpenAI API calls. Local dataset provides limited fallback functionality when API is unavailable.
