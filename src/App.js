@@ -1,5 +1,138 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, ChefHat, User, Bot } from "lucide-react";
+import { Send, ChefHat, User, Bot, ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react";
+
+// Feedback Component
+const FeedbackComponent = ({ messageId, sessionId, messageText }) => {
+  const [feedback, setFeedback] = useState(null);
+  const [showComment, setShowComment] = useState(false);
+  const [comment, setComment] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const submitFeedback = async (feedbackType, commentText = '') => {
+    setIsSubmitting(true);
+    
+    try {
+      const feedbackData = {
+        conversationId: sessionId,
+        messageId: messageId,
+        feedbackType: feedbackType,
+        comment: commentText,
+        messageText: messageText,
+        timestamp: new Date().toISOString()
+      };
+
+      // Send feedback to your n8n webhook
+      const response = await fetch("http://localhost:5678/webhook-test/feedback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(feedbackData),
+      });
+
+      if (response.ok) {
+        setIsSubmitted(true);
+        console.log('Feedback submitted successfully');
+      } else {
+        console.error('Failed to submit feedback');
+      }
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFeedbackClick = async (type) => {
+    if (isSubmitted) return;
+    
+    setFeedback(type);
+    
+    if (!showComment) {
+      await submitFeedback(type);
+    }
+  };
+
+  const handleCommentSubmit = async () => {
+    if (feedback) {
+      await submitFeedback(feedback, comment);
+      setShowComment(false);
+    }
+  };
+
+  if (isSubmitted) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-lg mt-2">
+        <span>✓ Thank you for your feedback!</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 p-2 bg-gray-50 rounded-lg border">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xs text-gray-600">Was this helpful?</span>
+        
+        <button
+          onClick={() => handleFeedbackClick('positive')}
+          disabled={isSubmitting}
+          className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+            feedback === 'positive'
+              ? 'bg-green-100 text-green-700'
+              : 'bg-white hover:bg-green-50 text-gray-600 hover:text-green-600'
+          } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        >
+          <ThumbsUp className="w-3 h-3" />
+          <span>Yes</span>
+        </button>
+
+        <button
+          onClick={() => handleFeedbackClick('negative')}
+          disabled={isSubmitting}
+          className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+            feedback === 'negative'
+              ? 'bg-red-100 text-red-700'
+              : 'bg-white hover:bg-red-50 text-gray-600 hover:text-red-600'
+          } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        >
+          <ThumbsDown className="w-3 h-3" />
+          <span>No</span>
+        </button>
+
+        <button
+          onClick={() => setShowComment(!showComment)}
+          className="flex items-center gap-1 px-2 py-1 rounded-md bg-white hover:bg-blue-50 text-gray-600 hover:text-blue-600 transition-colors text-xs"
+        >
+          <MessageSquare className="w-3 h-3" />
+          <span>Comment</span>
+        </button>
+      </div>
+
+      {showComment && (
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Tell us more..."
+            className="flex-1 px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-orange-400"
+          />
+          <button
+            onClick={handleCommentSubmit}
+            className="px-2 py-1 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors text-xs"
+          >
+            Send
+          </button>
+        </div>
+      )}
+
+      {isSubmitting && (
+        <div className="text-xs text-gray-500 mt-1">Submitting...</div>
+      )}
+    </div>
+  );
+};
 
 export default function App() {
   const [messages, setMessages] = useState([]);
@@ -25,7 +158,9 @@ export default function App() {
     if (!input.trim() || isLoading) return;
     
     const userMessage = input.trim();
-    setMessages([...messages, { role: "user", text: userMessage }]);
+    const messageId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    
+    setMessages([...messages, { role: "user", text: userMessage, id: messageId }]);
     setInput("");
     setIsLoading(true);
     
@@ -38,7 +173,8 @@ export default function App() {
         },
         body: JSON.stringify({ 
           chatInput: userMessage,
-          sessionId: sessionId
+          sessionId: sessionId,
+          messageId: messageId
         }),
       });
       
@@ -46,8 +182,8 @@ export default function App() {
       console.log("Response from n8n:", data);
             
       // Handle different response formats from n8n chat trigger
-	  let botResponse = "";
-	  console.log(data)
+      let botResponse = "";
+      console.log(data)
       if (data.success) {
         if (data.type === "recipe_suggestions" && data.recipes) {
           botResponse = "Here are some recipe suggestions:\n\n" + 
@@ -74,12 +210,19 @@ export default function App() {
         botResponse = data.output || "Sorry, I couldn't process your request.";
       }
       
-      setMessages(m => [...m, { role: "bot", text: botResponse }]);
-    } catch (error) {
-      console.error("Error:", error);
+      const botMessageId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
       setMessages(m => [...m, { 
         role: "bot", 
-        text: "Sorry, there was an error processing your request. Please try again." 
+        text: botResponse, 
+        id: botMessageId 
+      }]);
+    } catch (error) {
+      console.error("Error:", error);
+      const errorMessageId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      setMessages(m => [...m, { 
+        role: "bot", 
+        text: "Sorry, there was an error processing your request. Please try again.",
+        id: errorMessageId
       }]);
     } finally {
       setIsLoading(false);
@@ -101,7 +244,7 @@ export default function App() {
             {line.slice(2, -2)}
           </div>
         );
-      } else if (line.startsWith('• ')) {
+      } else if (line.startsWith('â€¢ ')) {
         return (
           <div key={index} className="ml-4 text-gray-700 mb-1">
             {line}
@@ -146,7 +289,7 @@ export default function App() {
           )}
           
           {messages.map((message, index) => (
-            <div key={index} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div key={message.id || index} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {message.role === 'bot' && (
                 <div className="flex-shrink-0">
                   <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full flex items-center justify-center">
@@ -155,17 +298,30 @@ export default function App() {
                 </div>
               )}
               
-              <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
-                message.role === 'user' 
-                  ? 'bg-blue-500 text-white rounded-br-sm' 
-                  : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+              <div className={`max-w-xs lg:max-w-md ${
+                message.role === 'user' ? 'flex flex-col items-end' : 'flex flex-col items-start'
               }`}>
-                {message.role === 'user' ? (
-                  <p className="text-sm">{message.text}</p>
-                ) : (
-                  <div className="text-sm">
-                    {formatMessage(message.text)}
-                  </div>
+                <div className={`px-4 py-3 rounded-2xl ${
+                  message.role === 'user' 
+                    ? 'bg-blue-500 text-white rounded-br-sm' 
+                    : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+                }`}>
+                  {message.role === 'user' ? (
+                    <p className="text-sm">{message.text}</p>
+                  ) : (
+                    <div className="text-sm">
+                      {formatMessage(message.text)}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Add feedback component only for bot messages */}
+                {message.role === 'bot' && (
+                  <FeedbackComponent 
+                    messageId={message.id}
+                    sessionId={sessionId}
+                    messageText={message.text}
+                  />
                 )}
               </div>
               
