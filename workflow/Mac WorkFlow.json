@@ -1,0 +1,469 @@
+{
+  "name": "Mac WorkFlow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chatbot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1104,
+        240
+      ],
+      "id": "b9288667-463c-4d46-bd7e-82ffa87629b3",
+      "name": "Webhook",
+      "webhookId": "654b109e-be5b-44c2-b246-6c88ed5ff663"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.message }}",
+        "options": {
+          "systemMessage": "You are a recipe chatbot AI agent that performs both intent classification and entity extraction in a single response.\n\nTASK: Analyze user messages and return structured JSON with classification and extracted entities.\n\nCLASSIFICATION CATEGORIES:\n1. \"substitute\" - User wants to substitute/replace an ingredient in a recipe\n2. \"suggest\" - User wants recipe suggestions based on available ingredients\n3. \"other\" - Message doesn't fit cooking/recipe context\n4. \"lookup\" - User wants recipe details, including ingredients and cooking method.\n5. \"context\" - User wants to know what the ingredient is by describing the ingredient's attributes\n\nENTITY EXTRACTION RULES:\n\nFor \"substitute\" classification:\n- Extract \"ingredient\": the ingredient to be replaced/substituted\n- Extract \"recipe\": the dish/recipe context where substitution is needed\n- Set \"ingredients\" and \"attributes\" to null\n\nFor \"suggest\" classification:\n- Extract \"ingredients\": array of available ingredients user mentions\n- Set \"ingredient\", \"recipe\", and \"attributes\" to null\n\nFor \"lookup\" classification:\n- Extract \"recipe\": the dish that the user wants to know the details of (ingredients + cooking method)\n- Set \"ingredient\", \"ingredients\", and \"attributes\" to null\n\nFor \"context\" classification:\n- Extract \"attributes\": the descriptive attributes of the ingredient the user is trying to identify, including taste, texture, color, and cooking method\n- Set \"ingredient\", \"recipe\", and \"ingredients\" to null\n\nFor \"other\" classification:\n- Set all entities to null\n\nRESPONSE FORMAT (MUST be valid JSON):\n{\n  \"classification\": \"substitute|suggest|other|lookup\",\n  \"entities\": {\n    \"ingredient\": \"string or null\",\n    \"recipe\": \"string or null\", \n    \"ingredients\": [\"array\", \"of\", \"strings\"] or null,\n    \"attributes\": {\n       \"taste\": \"string or null\",\n       \"texture\": \"string or null\",\n       \"color\": \"string or null\",\n       \"method\": \"string or null\"\n    }\n  },\n  \"confidence\": 0.0-1.0\n}\n\nCLASSIFICATION GUIDELINES:\n\nSUBSTITUTE indicators:\n- Keywords: \"substitute\", \"replace\", \"instead of\", \"alternative\", \"swap\", \"use instead\"\n- Patterns: \"X instead of Y\", \"replace X with\", \"substitute X in Y\"\n- Context: mentions specific ingredient + specific recipe/dish\n\nSUGGEST indicators:\n- Keywords: \"recipe\", \"make\", \"cook\", \"prepare\", \"what can I make\", \"suggestions\"\n- Patterns: \"I have X, Y, Z\", \"using these ingredients\", \"with chicken and rice\"\n- Context: lists available ingredients, asks for recipe ideas\n\nOTHER indicators:\n- Greetings, general questions, non-food related queries\n- Unclear or incomplete requests\n- Questions about cooking techniques without specific ingredients\n\nLOOKUP indicators:\n- Keywords: \"recipe for\", \"how to make\", \"ingredients of\", \"details of\"\n- Patterns: \"recipe for X\", \"how do I cook X\", \"I want to know more about X\", \"details for X\"\n- Context: mentions a recipe, asks for recipe details (ingredients and cooking method)\n\nCONTEXT indicators:\n- Keywords: \"kind of\", \"type of\", \"what is this ingredient\", \"don’t know the name\", \"it tastes\", \"it looks like\", \"it feels\", \"used for cooking\", \"something that\"\n- Patterns: \"a [color] [food form]\" (e.g., a green leafy vegetable), \"something that tastes [taste]\" (e.g., something that tastes sour), \"a [texture] ingredient\" (e.g., a crunchy seed), \"an ingredient used for [cooking method]\" (e.g., used for baking cakes)\n- Context: user describes an ingredient by its attributes (taste, texture, color, cooking method), user does not know or provide the actual name of the ingredient, the request is essentially about identifying or clarifying an ingredient from descriptive clues\n\nENTITY EXTRACTION GUIDELINES:\n\nIngredient extraction:\n- Extract base ingredient names (e.g., \"eggs\" not \"2 eggs\")\n- Use singular or plural as mentioned by user\n- Common ingredients: eggs, butter, milk, flour, sugar, oil, etc.\n\nRecipe extraction:\n- Extract dish/recipe name (e.g., \"chocolate cake\", \"cookies\", \"pasta\")\n- Include cooking method if mentioned (e.g., \"baked chicken\", \"fried rice\")\n- Use general terms if specific recipe unclear (e.g., \"baking\", \"cooking\")\n\nIngredients list extraction:\n- Extract all mentioned food items as separate array elements\n- Clean up quantities and focus on ingredient names\n- Include proteins, vegetables, grains, dairy, etc.\n\nAttributes list extraction:\n- Extract descriptive attributes of an ingredient when the user does not provide its name\n- Capture details such as, taste (e.g., sour, sweet, salty, bitter, spicy), texture (e.g., crunchy, soft, chewy, creamy), color (e.g., red, green, yellow, brown), and cooking method (e.g., fried, grilled, baked)\n\nCONFIDENCE SCORING:\n- 0.9-1.0: Very clear intent with specific ingredients/recipes mentioned\n- 0.7-0.8: Clear intent but some ambiguity in entities\n- 0.5-0.6: Somewhat unclear intent or entities\n- 0.3-0.4: Ambiguous message, best guess classification\n- 0.0-0.2: Very unclear or nonsensical input\n\nEXAMPLES:\n\nInput: \"I need to substitute eggs in my chocolate cake recipe\"\nOutput: {\"classification\": \"substitute\", \"entities\": {\"ingredient\": \"eggs\", \"recipe\": \"chocolate cake\", \"ingredients\": null, \"attributes\": {\"taste\": null, \"texture\": null, \"color\": null, \"method\": null}}, \"confidence\": 0.95}\n\nInput: \"Can I replace butter with oil in cookies?\"\nOutput: {\"classification\": \"substitute\", \"entities\": {\"ingredient\": \"butter\", \"recipe\": \"cookies\", \"ingredients\": null}, \"attributes\": {\"taste\": null, \"texture\": null, \"color\": null, \"method\": null}, \"confidence\": 0.9}\n\nInput: \"I have chicken, rice, and broccoli. What can I make?\"\nOutput: {\"classification\": \"suggest\", \"entities\": {\"ingredient\": null, \"recipe\": null, \"ingredients\": [\"chicken\", \"rice\", \"broccoli\"]}, \"confidence\": 0.95}\n\nInput: \"What recipes can I make with tomatoes and pasta?\"\nOutput: {\"classification\": \"suggest\", \"entities\": {\"ingredient\": null, \"recipe\": null, \"ingredients\": [\"tomatoes\", \"pasta\"], \"attributes\": {\"taste\": null, \"texture\": null, \"color\": null, \"method\": null}}, \"confidence\": 0.9}\n\nInput: \"Hello, how are you today?\"\nOutput: {\"classification\": \"other\", \"entities\": {\"ingredient\": null, \"recipe\": null, \"ingredients\": null, \"attributes\": {\"taste\": null, \"texture\": null, \"color\": null, \"method\": null}}, \"confidence\": 0.8}\n\nInput: \"What's the weather like?\"\nOutput: {\"classification\": \"other\", \"entities\": {\"ingredient\": null, \"recipe\": null, \"ingredients\": null, \"attributes\": {\"taste\": null, \"texture\": null, \"color\": null, \"method\": null}}, \"confidence\": 0.9}\n\nInput: \"substitute something in cake\"\nOutput: {\"classification\": \"substitute\", \"entities\": {\"ingredient\": \"unknown ingredient\", \"recipe\": \"cake\", \"ingredients\": null, \"attributes\": {\"taste\": null, \"texture\": null, \"color\": null, \"method\": null}}, \"confidence\": 0.4}\n\nInput: \"how do I make spaghetti?\"\nOutput: {\"classification\": \"lookup\", \"entities\": {\"ingredient\": null, \"recipe\": \"spaghetti\", \"ingredients\": null, \"attributes\": {\"taste\": null, \"texture\": null, \"color\": null, \"method\": null}}, \"confidence\": 0.9}\n\nInput: \"details for apple pie\"\nOutput: {\"classification\": \"lookup\", \"entities\": {\"ingredient\": null, \"recipe\": \"apple pie\", \"ingredients\": null, \"attributes\": {\"taste\": null, \"texture\": null, \"color\": null, \"method\": null}}, \"confidence\": 0.8}\n\nInput: \"I'm looking for a yellow fruit that tastes sour\"\nOutput: {\"classification\": \"context\", \"entities\": {\"ingredient\": null, \"recipe\": null, \"ingredients\": null, \"attributes\": {\"taste\": \"sour\", \"texture\": null, \"color\": \"yellow\", \"method\": null}}, \"confidence\": 0.8}\n\nInput: \"i want a green vegetable that is crunchy and slightly bitter\"\nOutput: {\"classification\": \"context\", \"entities\": {\"ingredient\": null, \"recipe\": null, \"ingredients\": null, \"attributes\": {\"taste\": \"bitter\", \"texture\": \"crunchy\", \"color\": \"green\", \"method\": null}}, \"confidence\": 0.9}\n\nInput: \"i want something that is tender and usually grilled\"\nOutput: {\"classification\": \"context\", \"entities\": {\"ingredient\": null, \"recipe\": null, \"ingredients\": null, \"attributes\": {\"taste\": null, \"texture\": \"tender\", \"color\": null, \"method\": \"grilled\"}}, \"confidence\": 0.85}\n\nIMPORTANT:\n- Always respond with valid JSON only\n- Never include explanations outside the JSON\n- Return JSON in a single line without newlines or extra formatting\n- If unsure about entities, use descriptive placeholders\n- Maintain consistent confidence scoring\n- Handle typos and informal language gracefully\n\nFORMAT REQUIREMENT: Return JSON like this:\n{\"classification\": \"substitute\", \"entities\": {\"ingredient\": \"eggs\", \"recipe\": \"pancake\", \"ingredients\": null\", attributes\": {\"taste\": null, \"texture\": null\", \"color\": null, \"method\": null}}, \"confidence\": 0.95}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -848,
+        240
+      ],
+      "id": "4ada3cf3-6063-4ee0-bbad-2a6d9ecf21ce",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -928,
+        432
+      ],
+      "id": "96d15c7e-9a65-4bc9-9c29-9f8ed32f5030",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "substitute",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c8a30a86-a54c-42a5-950b-d911dbe1f050"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "289ffc8a-6528-43e0-8ef7-f8b9bafd6595",
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "suggest",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7cec4c90-c55c-438c-9743-08e0b025ff03",
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "lookup",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "923bf44d-e4c7-448a-986b-fb7fe1bd5b7e",
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "context",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -224,
+        240
+      ],
+      "id": "4f8b1be3-c069-4caf-b5e3-208408ef56af",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the AI response\nconst aiResponse = $('AI Agent').first().json.output;\nconst aiR = $(\"AI Agent\").all();\nconsole.log(aiR)\n\ntry {\n  // Parse the JSON response\n  const parsedResponse = JSON.parse(aiResponse);\n  \n  // Validate structure\n  const result = {\n    classification: parsedResponse.classification || \"other\",\n    entities: {\n      ingredient: parsedResponse.entities?.ingredient || null,\n      recipe: parsedResponse.entities?.recipe || null,\n      ingredients: parsedResponse.entities?.ingredients || null,\n      attributes: {\n        taste: parsedResponse.entities?.attributes?.taste || null,\n        texture: parsedResponse.entities?.attributes?.texture || null,\n        color: parsedResponse.entities?.attributes?.color || null,\n        method: parsedResponse.entities?.attributes?.method || null\n      }\n    },\n    confidence: parsedResponse.confidence || 0.0\n  };\n  \n  return { json: result };\n  \n} catch (error) {\n  // Fallback if JSON parsing fails\n  return { \n    json: {\n      classification: \"other\",\n      entities: {\n        ingredient: null,\n        recipe: null,\n        ingredients: null\n      },\n      confidence: 0.0,\n      error: \"Failed to parse AI response\"\n    }\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        240
+      ],
+      "id": "ebac0398-8586-4a2a-9e7d-29305ea429f3",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"type\": \"recipe_suggestions\",\n  \"recipes\": {{ JSON.stringify($json.recipes) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        208,
+        224
+      ],
+      "id": "0ed47f2f-db45-43b2-b746-eedeb000e0e0",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"type\": \"ingredient_substitutes\",\n  \"substitutes\": {{ JSON.stringify($json.substitutes) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "e267c77a-912b-4784-b7e6-2d6445dbfdb8",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://0.0.0.0:8080/substitute",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=ingredient",
+              "value": "={{ $json.entities.ingredient }}"
+            },
+            {
+              "name": "recipe",
+              "value": "={{ $json.entities.recipe }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e9be9007-3a94-4ab7-9aab-e1a48574874b",
+      "name": "Substitute"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://0.0.0.0:8080/suggest",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=ingredients",
+              "value": "={{ $json.entities.ingredients }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        224
+      ],
+      "id": "baa8dba2-96b8-44cf-9c1a-a7dd07b29327",
+      "name": "Recipe Suggestions"
+    },
+    {
+      "parameters": {
+        "url": "http://0.0.0.0:8080/lookup",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "recipe",
+              "value": "={{ $json.entities.recipe }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        416
+      ],
+      "id": "e6c888fb-fc36-472f-81d9-52ff652ff539",
+      "name": "Recipe Lookup"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"type\": \"recipe_lookup\",\n  \"recipes\": {{ JSON.stringify($json.recipes) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        208,
+        416
+      ],
+      "id": "c4ebf90c-9bcc-4419-83e4-0f7fd35501c0",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "url": "http://0.0.0.0:8080/context",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "attributes",
+              "value": "={{ $json.message.attributes }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        608
+      ],
+      "id": "ec805753-3677-48fe-b083-41295d50de10",
+      "name": "Context Ingredients"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"type\": \"recipe_lookup\",\n  \"recipes\": {{ JSON.stringify($json.attributes) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        208,
+        608
+      ],
+      "id": "a73cb949-9448-42cf-9067-3f61ea7615d7",
+      "name": "Respond to Webhook3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Substitute",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recipe Suggestions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recipe Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Context Ingredients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Substitute": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recipe Suggestions": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recipe Lookup": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context Ingredients": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f632d1e9-0b7c-43fc-add4-69b122007485",
+  "meta": {
+    "instanceId": "6c631d09f825f2fe5e4b70a73071b02bb9811aec448ba809d5eace2fe5043e2b"
+  },
+  "id": "DV5p2oHCXORRDDqn",
+  "tags": []
+}
