@@ -14,16 +14,12 @@ const FeedbackComponent = ({ messageId, sessionId, messageText }) => {
     
     try {
       const feedbackData = {
-        conversationId: sessionId,
-        messageId: messageId,
-        feedbackType: feedbackType,
-        comment: commentText,
-        messageText: messageText,
-        timestamp: new Date().toISOString()
+        message_id: messageId,
+        session_id: sessionId,
+        is_helpful: feedbackType === 'positive',   // FastAPI expects boolean
+        comment: commentText
       };
-
-      // Send feedback to your n8n webhook
-      const response = await fetch("http://localhost:5678/webhook-test/feedback", {
+      const response = await fetch("http://localhost:8080/feedback", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -174,7 +170,7 @@ export default function App() {
         body: JSON.stringify({ 
           chatInput: userMessage,
           sessionId: sessionId,
-          messageId: messageId
+          messageId: messageId,
         }),
       });
       
