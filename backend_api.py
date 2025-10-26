@@ -33,6 +33,21 @@ class SuggestionRequest(BaseModel):
     user_message: str
     ingredients: list[str]
 
+@app.post("/messages")
+async def save_message(data: dict):
+    """Save user or bot messages to Supabase."""
+    await asyncio.to_thread(
+        supabase.table("messages").insert({
+            "message_id": data["message_id"],
+            "session_id": data["session_id"],
+            "sender_type": data["sender_type"],   # 'user' or 'bot'
+            "message_text": data["message_text"],
+            "created_at": datetime.utcnow().isoformat()
+        }).execute
+    )
+    return {"status": "message stored"}
+
+
 @app.post("/substitute")
 def substitute(req: SubstitutionRequest):
     result = ingredient_service.get_substitutes(req.ingredient, req.recipe)
@@ -40,15 +55,12 @@ def substitute(req: SubstitutionRequest):
 
 @app.post("/suggest")
 async def suggest(req: SuggestionRequest):
-    await asyncio.to_thread(
-            supabase.table("messages").insert({
-                "message_id": req.message_id,
-                "session_id": req.session_id,
-                "sender_type": "user",
-                "message_text": req.user_message,
-                "created_at": datetime.utcnow().isoformat()
-            }).execute
-    )
+    await save_message({
+        "message_id": req.message_id,
+        "session_id": req.session_id,
+        "sender_type": "user",
+        "message_text": req.user_message
+    })
     recipes = recipe_service.get_suggestions(req.ingredients)
     return {"recipes": [{"name": r.name, "ingredients": r.ingredients} for r in recipes]}
 

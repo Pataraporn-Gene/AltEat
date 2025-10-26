@@ -15,10 +15,10 @@ const FeedbackComponent = ({ messageId, sessionId, messageText }) => {
     try {
       const feedbackData = {
         message_id: messageId,
-        session_id: sessionId,
         is_helpful: feedbackType === 'positive',   // FastAPI expects boolean
         comment: commentText
       };
+      console.log(feedbackData)
       const response = await fetch("http://localhost:8080/feedback", {
         method: "POST",
         headers: {
@@ -212,6 +212,17 @@ export default function App() {
         text: botResponse, 
         id: botMessageId 
       }]);
+      
+      await fetch("http://localhost:8080/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message_id: botMessageId,
+          session_id: sessionId,
+          sender_type: "bot",
+          message_text: botResponse,
+        }),
+      });
     } catch (error) {
       console.error("Error:", error);
       const errorMessageId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
